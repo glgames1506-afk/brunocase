@@ -6,121 +6,107 @@
     <title>Simulador de Capinhas Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            /* Premium Dark Mode Color Palette */
-            --primary: #6366f1; /* Indigo sleek */
+    <style>:root {
+            --primary: #6366f1;
             --primary-hover: #4f46e5;
-            --surface: #18181b; /* Zinc 900 */
-            --bg-body: #09090b; /* Zinc 950 */
+            --surface: #18181b;
+            --bg-body: #09090b;
             --text-dark: #fafafa;
             --text-gray: #a1a1aa;
             --border: #27272a;
             --radius-card: 24px;
             --radius-btn: 12px;
-            --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
-                * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin:0; padding:0; box-sizing:border-box; }
         body { 
             font-family: 'Inter', system-ui, sans-serif; 
             background: var(--bg-body); 
             color: var(--text-dark); 
-            -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
-            overflow-y: auto; /* Garante scroll natural */
             min-height: 100vh;
+            overflow-y: auto;
         }
 
-        header {
-            text-align: center;
-            padding: 20px;
-        }
+        header { text-align: center; padding: 30px 10px; }
+        header h1 { font-size: 28px; letter-spacing: 1px; }
 
         .simulator-layout {
             display: flex;
-            max-width: 1200px;
+            flex-wrap: wrap;
+            max-width: 1100px;
             margin: 0 auto;
-            gap: 20px;
-            padding: 0 20px 40px 20px;
+            gap: 30px;
+            padding: 20px;
         }
 
-        /* ÁREA ESQUERDA (MOCKUP) */
         .mockup-area {
-            position: sticky; /* Trava o celular na tela enquanto rola os controles no desktop */
-            top: 20px;
-            flex: 1.2;
-            height: calc(100vh - 120px);
+            flex: 1;
+            min-width: 320px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #18181b 0%, #09090b 100%);
+            background: #111;
             border-radius: var(--radius-card);
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
-            overflow: hidden;
+            padding: 40px 20px;
             border: 1px solid var(--border);
         }
 
         .canvas-container-shadow {
-            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
-            border-radius: 46px; 
-            transition: all 0.3s ease;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+            border-radius: 40px;
         }
 
-        /* ÁREA DIREITA (CONTROLES) */
         .control-panel {
-            flex: 0 0 400px;
+            flex: 1;
+            min-width: 320px;
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
 
-        @media(max-width: 900px) {
-            .simulator-layout {
-                flex-direction: column;
-                padding: 10px;
-            }
-            .mockup-area {
-                position: relative;
-                top: 0;
-                width: 100%;
-                height: 55vh; /* Celular ocupa metade da tela no mobile */
-                min-height: 400px;
-                margin-bottom: 20px;
-            }
-            .control-panel {
-                width: 100%;
-                flex: none;
-                padding: 0 10px;
-            }
-            header h1 { font-size: 24px !important; }
-        }
-            header h1 { font-size: 22px !important; }
-            .simulator-layout { flex-direction: column; padding: 10px; overflow: visible; }
-            .mockup-area { 
-                min-height: 450px; 
-                margin: 0; 
-                border-radius: 16px; 
-                padding: 10px;
-                order: 1; /* Mockup primeiro no mobile */
-            }
-            .control-panel { 
-                width: 100%; 
-                padding: 20px 0; 
-                order: 2;
-            }
-            .panel-header h2 { font-size: 20px; }
-            .custom-select { padding: 16px; font-size: 16px; } /* Maior para toque */
-            .btn-primary { padding: 20px; font-size: 16px; }
-            .canvas-container-shadow { transform-origin: center center; }
+        .panel-header h2 { font-size: 22px; font-weight: 700; }
+        .panel-header p { font-size: 14px; color: var(--text-gray); }
+
+        .panel-body { display: flex; flex-direction: column; gap: 15px; }
+
+        .input-group label {
+            display: block; font-size: 12px; font-weight: 600; color: var(--text-gray); margin-bottom: 8px; text-transform: uppercase;
         }
 
-        /* Injecting custom color input fix */
-        input[type=number] {
-            background: var(--surface);
-            color: var(--text-dark);
+        .custom-select {
+            width: 100%; padding: 14px; border-radius: var(--radius-btn); border: 1px solid var(--border);
+            background: var(--surface); color: var(--text-dark); font-size: 15px; cursor: pointer;
         }
-    </style>
+
+        .upload-btn {
+            display: flex; flex-direction: column; align-items: center; padding: 25px;
+            border: 2px dashed var(--border); border-radius: 16px; cursor: pointer; background: var(--surface); gap: 8px;
+        }
+        .upload-btn:hover { border-color: var(--primary); }
+
+        .editor-controls { background: var(--surface); padding: 20px; border-radius: 16px; display: none; flex-direction: column; gap: 15px; border: 1px solid var(--border); }
+        .editor-controls.active { display: flex; }
+
+        .slider-group { display: flex; flex-direction: column; gap: 5px; }
+        .slider-group label { display: flex; justify-content: space-between; font-size: 11px; }
+        
+        input[type=range] { width: 100%; }
+
+        .btn-primary {
+            width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: var(--radius-btn);
+            font-weight: 700; cursor: pointer; text-transform: uppercase; margin-top: 10px;
+        }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 999; display: none; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--surface); padding: 30px; border-radius: 20px; max-width: 90%; }
+        .modal-img-container img { max-width: 100%; max-height: 60vh; }
+
+        @media(max-width: 800px) {
+            .simulator-layout { flex-direction: column; align-items: center; }
+            .mockup-area { width: 100%; min-height: 450px; }
+            .control-panel { width: 100%; }
+        }</style>
 </head>
 <body>
 
