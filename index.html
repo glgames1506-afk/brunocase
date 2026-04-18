@@ -40,6 +40,7 @@
 
         /* ÁREA ESQUERDA (MOCKUP) */
         .mockup-area {
+            position: relative;
             flex: 1;
             display: flex;
             align-items: center;
@@ -599,20 +600,8 @@ function setupSimulator(skipDeviceOverride = false) {
         backgroundColor: 'transparent'
     });
 
-    // Escala Responsiva Visual (Cross-device scaling inteligente)
-    const stageH = $('stage-area').clientHeight - 40;
-    const stageW = $('stage-area').clientWidth - 40;
+    resizeCanvasVisual();
     
-    const scaleY = stageH / currentDevice.h;
-    const scaleX = stageW / currentDevice.w;
-    
-    // Pega a menor escala para garantir que caiba tanto na largura quanto na altura
-    let finalScale = Math.min(1, scaleY, scaleX);
-    
-    $('canvas-wrapper').style.transform = `scale(${finalScale})`;
-    $('canvas-wrapper').style.width = `${currentDevice.w}px`;
-    $('canvas-wrapper').style.height = `${currentDevice.h}px`;
-
     // Aplica OVERLAY
     let src = currentDevice.maskUrl || generatePerfectMask(currentDevice);
     fabric.Image.fromURL(src, img => {
@@ -625,6 +614,28 @@ function setupSimulator(skipDeviceOverride = false) {
 
     resetEditor();
 }
+
+function resizeCanvasVisual() {
+    if(!currentDevice || !fabricCanvas) return;
+    
+    // Força o browser a recalcular o layout antes de medir
+    const stage = $('stage-area');
+    const stageH = stage.offsetHeight - 40;
+    const stageW = stage.offsetWidth - 40;
+    
+    const scaleY = stageH / currentDevice.h;
+    const scaleX = stageW / currentDevice.w;
+    
+    let finalScale = Math.min(1, scaleY, scaleX);
+    
+    const wrapper = $('canvas-wrapper');
+    wrapper.style.transform = `scale(${finalScale})`;
+    wrapper.style.width = `${currentDevice.w}px`;
+    wrapper.style.height = `${currentDevice.h}px`;
+}
+
+window.addEventListener('resize', resizeCanvasVisual);
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvasVisual, 100));
 
 modelCombo.onchange = () => setupSimulator(false);
 
