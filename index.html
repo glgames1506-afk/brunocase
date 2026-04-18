@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simulador de Capinhas Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Premium Dark Mode Color Palette */
+            --primary: #6366f1; /* Indigo sleek */
+            --primary-hover: #4f46e5;
+            --surface: #18181b; /* Zinc 900 */
+            --bg-body: #09090b; /* Zinc 950 */
+            --text-dark: #fafafa;
+            --text-gray: #a1a1aa;
+            --border: #27272a;
+            --radius-card: 24px;
+            --radius-btn: 12px;
+            --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-body); color: var(--text-dark); -webkit-font-smoothing: antialiased; }
+
+        header {
+            text-align: center;
+            padding: 30px 20px 10px 20px;
+        }
+
+        .simulator-layout {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: calc(100vh - 100px);
+            align-items: stretch;
+            padding-bottom: 40px;
+        }
+
+        /* ÁREA ESQUERDA (MOCKUP) */
+        .mockup-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #18181b 0%, #09090b 100%);
+            border-radius: var(--radius-card);
+            margin: 20px;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .canvas-container-shadow {
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+            border-radius: 46px; /* Para as bordas da base */
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* ÁREA DIREITA (CONTROLES) */
+        .control-panel {
+            width: 420px;
+            background: var(--bg-body);
+            display: flex;
+            flex-direction: column;
+            padding: 30px 20px 20px 10px;
+        }
+
+        .panel-header h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+        .panel-header p { font-size: 14px; color: var(--text-gray); margin-top: 5px; }
+
+        .panel-body { margin-top: 30px; display: flex; flex-direction: column; gap: 20px; }
+
+        .input-group label {
+            display: block; font-size: 13px; font-weight: 600; color: var(--text-gray); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .custom-select {
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--radius-btn);
+            border: 1px solid var(--border);
+            appearance: none;
+            background: var(--surface) url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") no-repeat right 15px center;
+            background-size: 16px;
+            font-size: 15px; font-family: inherit; color: var(--text-dark); cursor: pointer; transition: 0.2s;
+        }
+        .custom-select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+
+        .upload-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border: 2px dashed var(--border); background: var(--surface); border-radius: 16px; padding: 30px 20px; cursor: pointer; transition: all 0.2s; gap: 10px;
+        }
+        .upload-btn:hover { border-color: var(--primary); background: rgba(99, 102, 241, 0.05); }
+        .upload-btn svg { width: 32px; height: 32px; color: var(--primary); }
+        .upload-btn span { font-size: 14px; font-weight: 600; color: var(--text-dark); }
+        
+        .editor-controls { background: var(--surface); padding: 20px; border-radius: 16px; display: none; flex-direction: column; gap: 16px; border: 1px solid var(--border); }
+        .editor-controls.active { display: flex; }
+
+        .slider-group { display: flex; flex-direction: column; gap: 8px; }
+        .slider-group label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-gray); }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: var(--text-dark); cursor: pointer; margin-top: -7px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--border); border-radius: 2px; }
+
+        .action-row { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-secondary { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-dark); font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-secondary:hover { background: #27272a; }
+
+        .generate-btn-container { margin-top: auto; padding-top: 20px; }
+        .btn-primary {
+            width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: var(--radius-btn); font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 12px 25px rgba(99, 102, 241, 0.4); }
+        .btn-primary:active { transform: translateY(0); }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--surface); padding: 40px; border-radius: var(--radius-card); text-align: center; max-width: 90%; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
+        .modal-img-container { margin: 25px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #000; padding: 10px; }
+        .modal-img-container img { max-width: 100%; max-height: 50vh; display: block; margin: 0 auto; border-radius: 8px; }
+        .flex-btn-row { display: flex; gap: 12px; justify-content: center; }
+
+        @media(max-width: 768px) {
+            header { padding: 20px 10px 0 10px; }
+            header h1 { font-size: 22px !important; }
+            .simulator-layout { flex-direction: column; padding: 10px; overflow: visible; }
+            .mockup-area { 
+                min-height: 450px; 
+                margin: 0; 
+                border-radius: 16px; 
+                padding: 10px;
+                order: 1; /* Mockup primeiro no mobile */
+            }
+            .control-panel { 
+                width: 100%; 
+                padding: 20px 0; 
+                order: 2;
+            }
+            .panel-header h2 { font-size: 20px; }
+            .custom-select { padding: 16px; font-size: 16px; } /* Maior para toque */
+            .btn-primary { padding: 20px; font-size: 16px; }
+            .canvas-container-shadow { transform-origin: center center; }
+        }
+
+        /* Injecting custom color input fix */
+        input[type=number] {
+            background: var(--surface);
+            color: var(--text-dark);
+        }
+    </style>
+</head>
+<body>
+
+    <header style="margin-bottom: 25px;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="3" ry="3"></rect>
+                <circle cx="15" cy="6" r="1.5" fill="var(--text-dark)"></circle>
+                <path d="M10 6h1"></path>
+                <path d="M12 19h.01"></path>
+            </svg>
+            <h1 style="font-size: 28px; margin: 0; letter-spacing: 1px;">BRUNO CASE</h1>
+        </div>
+        
+    </header>
+
+    <div class="simulator-layout">
+        <!-- ÁREA DO MOCKUP -->
+        <div class="mockup-area" id="stage-area">
+            <div id="canvas-wrapper" class="canvas-container-shadow">
+                <canvas id="fabric-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- PAINEL DE CONTROLE -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h2>Painel de Produção</h2><p>Estúdio de Personalização</p>
+            </div>
+
+            <div class="panel-body">
+                <div class="input-group">
+                    <label>Selecione a Marca</label>
+                    <select id="brand-select" class="custom-select"></select>
+                </div>
+
+                <div class="input-group">
+                    <label>Selecione o Modelo</label>
+                    <select id="model-select" class="custom-select"></select>
+                </div>
+
+                <div class="input-group override-group" style="background: var(--surface); padding: 16px; border-radius: 16px; margin-top: 10px; border: 1px solid var(--border);">
+                    <label style="margin-bottom: 8px; color: var(--text-gray); font-size: 11px; font-weight: 700;">OU TAMANHO ESPECÍFICO MANUAL (EM MILÍMETROS)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="custom-w" placeholder="Largura (ex: 75)" style="flex:1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px;">
+                        <input type="number" id="custom-h" placeholder="Altura (ex: 155)" style="flex:1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px;">
+                        <button id="btn-apply-custom" style="padding: 10px 20px; border-radius: 8px; border: none; background: var(--text-dark); color: var(--bg-body); cursor: pointer; font-weight: 700; font-family: inherit; font-size: 13px; transition: 0.2s;">APLICAR</button>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top: 15px;">
+                    <label>Imagem da Arte</label>
+                    <label class="upload-btn">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <span>Clique para carregar uma foto</span>
+                        <input type="file" id="upload-input" accept="image/*" style="display:none;">
+                    </label>
+                </div>
+
+                <!-- Controles Editor (Mostrado apenas quando há imagem) -->
+                <div id="editor-controls" class="editor-controls">
+                    <div class="slider-group">
+                        <label><span>Tamanho (Zoom)</span> <span id="v-zoom">0</span></label>
+                        <input type="range" id="zoom-slider" min="0.1" max="3" step="0.01" value="1">
+                    </div>
+                    
+                    <div class="slider-group">
+                        <label><span>Rotação</span> <span id="v-rot">0°</span></label>
+                        <input type="range" id="rot-slider" min="-180" max="180" step="1" value="0">
+                    </div>
+
+                    <div class="action-row">
+                        <button class="btn-secondary" id="btn-center">Centralizar</button>
+                        <button class="btn-secondary" id="btn-delete" style="color:#d32f2f;">Remover</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-footer">
+                <button id="btn-export" class="btn-primary">GERAR ARQUIVO PARA IMPRESSÃO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FINAL -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modal-title" style="margin-bottom: 5px;">A Arte está pronta!</h2>
+            <p style="font-size: 13px; color: var(--text-gray);">Este é o arquivo sem a máscara, pronto para enviar para a máquina.</p>
+            
+            <div class="modal-img-container">
+                <img id="result-img" src="" alt="Arte Pronta">
+            </div>
+            
+            <div class="flex-btn-row">
+                <button class="btn-secondary" id="btn-close-modal">Refazer</button>
+                <button class="btn-primary" id="btn-download" style="width: auto; padding: 12px 30px;">BAIXAR ARQUIVO (300 DPI)</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * -------------------------------------------------------------
+ * ENGINE DO SIMULADOR (Focado no criador / gráfica)
+ * -------------------------------------------------------------
+ */
+
+// Banco de Aparelhos. 'maskUrl' é onde você pode injetar a imagem original da GoCase se tiver.
+const DEVICES = {
+    Apple: [
+        { n: "iPhone 17 Pro Max", w: 320, h: 660, maskUrl: null, type: 'apple_pro', cr: 38 },
+        { n: "iPhone 17 Pro", w: 300, h: 630, maskUrl: null, type: 'apple_pro', cr: 36 },
+        { n: "iPhone 17 Plus", w: 320, h: 660, maskUrl: null, type: 'apple_16_pill', cr: 38 },
+        { n: "iPhone 17", w: 300, h: 630, maskUrl: null, type: 'apple_16_pill', cr: 36 },
+        { n: "iPhone 16 Pro Max", w: 320, h: 660, maskUrl: null, type: 'apple_pro', cr: 38 },
+        { n: "iPhone 16 Pro", w: 300, h: 630, maskUrl: null, type: 'apple_pro', cr: 36 },
+        { n: "iPhone 16 Plus", w: 320, h: 660, maskUrl: null, type: 'apple_16_pill', cr: 38 },
+        { n: "iPhone 16", w: 300, h: 630, maskUrl: null, type: 'apple_16_pill', cr: 36 },
+        { n: "iPhone 15 Pro Max", w: 320, h: 660, maskUrl: null, type: 'apple_pro', cr: 38 },
+        { n: "iPhone 15 Pro", w: 300, h: 630, maskUrl: null, type: 'apple_pro', cr: 36 },
+        { n: "iPhone 15 Plus", w: 320, h: 660, maskUrl: null, type: 'apple_diag_sq', cr: 38 },
+        { n: "iPhone 15", w: 300, h: 620, maskUrl: null, type: 'apple_diag_sq', cr: 34 },
+        { n: "iPhone 14 Pro Max", w: 320, h: 660, maskUrl: null, type: 'apple_pro', cr: 36 },
+        { n: "iPhone 14 Pro", w: 300, h: 630, maskUrl: null, type: 'apple_pro', cr: 34 },
+        { n: "iPhone 14 Plus", w: 320, h: 660, maskUrl: null, type: 'apple_diag_sq', cr: 36 },
+        { n: "iPhone 14", w: 300, h: 620, maskUrl: null, type: 'apple_diag_sq', cr: 34 },
+        { n: "iPhone 13 Pro Max", w: 320, h: 660, maskUrl: null, type: 'apple_pro', cr: 36 },
+        { n: "iPhone 13 Pro", w: 300, h: 620, maskUrl: null, type: 'apple_pro', cr: 32 },
+        { n: "iPhone 13", w: 300, h: 615, maskUrl: null, type: 'apple_diag_sq', cr: 32 },
+        { n: "iPhone 13 mini", w: 280, h: 590, maskUrl: null, type: 'apple_diag_sq', cr: 30 },
+        { n: "iPhone 12 Pro Max", w: 320, h: 660, maskUrl: null, type: 'apple_pro', cr: 34 },
+        { n: "iPhone 12 / 12 Pro", w: 300, h: 620, maskUrl: null, type: 'apple_vert_sq', cr: 32 },
+        { n: "iPhone 12 mini", w: 280, h: 590, maskUrl: null, type: 'apple_vert_sq', cr: 30 },
+        { n: "iPhone 11 Pro Max", w: 320, h: 650, maskUrl: null, type: 'apple_pro', cr: 36 },
+        { n: "iPhone 11 Pro", w: 300, h: 610, maskUrl: null, type: 'apple_pro', cr: 34 },
+        { n: "iPhone 11", w: 310, h: 630, maskUrl: null, type: 'apple_vert_sq', cr: 34 },
+        { n: "iPhone XR", w: 310, h: 630, maskUrl: null, type: 'apple_single', cr: 34 },
+        { n: "iPhone XS Max", w: 320, h: 650, maskUrl: null, type: 'apple_pill', cr: 36 },
+        { n: "iPhone X / XS", w: 300, h: 610, maskUrl: null, type: 'apple_pill', cr: 34 },
+        { n: "iPhone SE (2022)", w: 280, h: 580, maskUrl: null, type: 'apple_single', cr: 28 },
+        { n: "iPhone 7 / 8", w: 280, h: 580, maskUrl: null, type: 'apple_single', cr: 28 },
+        { n: "iPhone 7 Plus / 8 Plus", w: 320, h: 640, maskUrl: null, type: 'apple_single', cr: 32 }
+    ],
+    Samsung: [
+        { n: "Galaxy S24 Ultra", w: 330, h: 670, maskUrl: null, type: 's_ultra', cr: 16 },
+        { n: "Galaxy S24+", w: 315, h: 650, maskUrl: null, type: 's_float', cr: 28 },
+        { n: "Galaxy S24", w: 300, h: 620, maskUrl: null, type: 's_float', cr: 28 },
+        { n: "Galaxy S24 FE", w: 315, h: 650, maskUrl: null, type: 's_float', cr: 28 },
+        { n: "Galaxy S23 Ultra", w: 330, h: 670, maskUrl: null, type: 's_ultra', cr: 16 },
+        { n: "Galaxy S23+", w: 315, h: 650, maskUrl: null, type: 's_float', cr: 26 },
+        { n: "Galaxy S23", w: 290, h: 610, maskUrl: null, type: 's_float', cr: 28 },
+        { n: "Galaxy S23 FE", w: 310, h: 640, maskUrl: null, type: 's_float', cr: 28 },
+        { n: "Galaxy S22 Ultra", w: 330, h: 670, maskUrl: null, type: 's_ultra', cr: 16 },
+        { n: "Galaxy S22+", w: 315, h: 650, maskUrl: null, type: 's_block_vert', cr: 26 },
+        { n: "Galaxy S22", w: 290, h: 610, maskUrl: null, type: 's_block_vert', cr: 26 },
+        { n: "Galaxy S21 Ultra", w: 330, h: 670, maskUrl: null, type: 's_ultra', cr: 24 },
+        { n: "Galaxy S21 FE", w: 310, h: 640, maskUrl: null, type: 's_block_vert', cr: 28 },
+        { n: "Galaxy S20 FE", w: 310, h: 640, maskUrl: null, type: 's_block_vert', cr: 28 },
+        { n: "Galaxy A55", w: 315, h: 660, maskUrl: null, type: 's_float', cr: 26 },
+        { n: "Galaxy A54", w: 310, h: 640, maskUrl: null, type: 's_float', cr: 26 },
+        { n: "Galaxy A53 5G", w: 310, h: 640, maskUrl: null, type: 's_block_quad', cr: 26 },
+        { n: "Galaxy A52 / A52s", w: 310, h: 640, maskUrl: null, type: 's_block_quad', cr: 26 },
+        { n: "Galaxy A35", w: 315, h: 660, maskUrl: null, type: 's_float', cr: 26 },
+        { n: "Galaxy A34", w: 315, h: 660, maskUrl: null, type: 's_float', cr: 26 },
+        { n: "Galaxy A33", w: 310, h: 640, maskUrl: null, type: 's_block_quad', cr: 26 },
+        { n: "Galaxy A25", w: 310, h: 650, maskUrl: null, type: 's_float', cr: 26 },
+        { n: "Galaxy A24", w: 310, h: 650, maskUrl: null, type: 's_float', cr: 26 },
+        { n: "Galaxy A15", w: 310, h: 650, maskUrl: null, type: 's_float', cr: 24 },
+        { n: "Galaxy A14", w: 315, h: 660, maskUrl: null, type: 's_float', cr: 24 },
+        { n: "Galaxy A13", w: 315, h: 660, maskUrl: null, type: 's_block_quad', cr: 24 },
+        { n: "Galaxy A12", w: 315, h: 660, maskUrl: null, type: 's_block_quad', cr: 24 },
+        { n: "Galaxy A05 / A05s", w: 315, h: 660, maskUrl: null, type: 's_float', cr: 24 }
+    ],
+    Motorola: [
+        { n: "Moto G84", w: 310, h: 650, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Moto G54", w: 310, h: 660, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Moto G34", w: 310, h: 660, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Moto G24", w: 310, h: 660, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Moto G14", w: 310, h: 650, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Moto G04", w: 310, h: 660, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Moto G200", w: 315, h: 670, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Moto G100", w: 315, h: 670, maskUrl: null, type: 'moto_sq', cr: 26 },
+        { n: "Moto G60", w: 315, h: 670, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Moto G52", w: 310, h: 650, maskUrl: null, type: 'moto_std', cr: 26 },
+        { n: "Edge 50 Ultra", w: 315, h: 660, maskUrl: null, type: 'moto_std', cr: 32 },
+        { n: "Edge 50 Pro", w: 315, h: 660, maskUrl: null, type: 'moto_std', cr: 32 },
+        { n: "Edge 40 Neo", w: 310, h: 650, maskUrl: null, type: 'moto_std', cr: 30 },
+        { n: "Edge 40", w: 310, h: 650, maskUrl: null, type: 'moto_std', cr: 30 },
+        { n: "Edge 30", w: 310, h: 650, maskUrl: null, type: 'moto_std', cr: 28 }
+    ],
+    Xiaomi: [
+        { n: "Redmi Note 13 Pro+ 5G", w: 315, h: 660, maskUrl: null, type: 'xiaomi_float_3', cr: 30 },
+        { n: "Redmi Note 13 Pro 5G", w: 315, h: 660, maskUrl: null, type: 'xiaomi_sq_3', cr: 28 },
+        { n: "Redmi Note 13", w: 315, h: 660, maskUrl: null, type: 'xiaomi_float_note13', cr: 30 },
+        { n: "Redmi Note 12 Pro", w: 315, h: 660, maskUrl: null, type: 'xiaomi_rect_3', cr: 28 },
+        { n: "Redmi Note 12", w: 315, h: 660, maskUrl: null, type: 'xiaomi_rect_2', cr: 26 },
+        { n: "Redmi Note 11 Pro", w: 315, h: 660, maskUrl: null, type: 'xiaomi_rect_3', cr: 26 },
+        { n: "Redmi Note 11", w: 315, h: 660, maskUrl: null, type: 'xiaomi_rect_4', cr: 26 },
+        { n: "Redmi Note 10", w: 315, h: 660, maskUrl: null, type: 'xiaomi_rect_4', cr: 26 },
+        { n: "Redmi 13C", w: 315, h: 660, maskUrl: null, type: 'xiaomi_13c', cr: 26 },
+        { n: "Redmi 12C", w: 315, h: 660, maskUrl: null, type: 'xiaomi_sq_2', cr: 26 },
+        { n: "Poco X6 Pro", w: 315, h: 660, maskUrl: null, type: 'xiaomi_poco', cr: 28 },
+        { n: "Poco X6", w: 315, h: 660, maskUrl: null, type: 'xiaomi_poco', cr: 28 },
+        { n: "Poco F5 Pro", w: 315, h: 660, maskUrl: null, type: 'xiaomi_rect_3', cr: 28 },
+        { n: "Poco F5", w: 315, h: 660, maskUrl: null, type: 'xiaomi_float_tri', cr: 28 },
+        { n: "Poco X5 Pro", w: 315, h: 660, maskUrl: null, type: 'xiaomi_poco', cr: 26 }
+    ],
+    LG: [
+        { n: "LG K62", w: 315, h: 660, maskUrl: null, type: 'lg_sq', cr: 28 },
+        { n: "LG K52", w: 315, h: 660, maskUrl: null, type: 'lg_sq', cr: 28 },
+        { n: "LG K41S", w: 315, h: 660, maskUrl: null, type: 'lg_hz', cr: 28 },
+        { n: "LG K51S", w: 315, h: 660, maskUrl: null, type: 'lg_hz', cr: 28 },
+        { n: "LG K61", w: 315, h: 660, maskUrl: null, type: 'lg_hz', cr: 28 }
+    ]
+};
+
+// Gerador Avançado de Máscara em SVG (Caso MaskUrl seja nulo)
+// Gerador Principal em SVG com Arquitetura Fotorrealista (Render Engine 3D Nativa)
+// Engine de Máscara (Estilo Blueprint Flat Premium - Clean UI)
+function generatePerfectMask(dev) {
+    const W = dev.w, H = dev.h, CR = dev.cr;
+    const BW = 16; // Borda flat mais limpa e gordinha
+    let cam = '';
+    
+    // Sem luzes cafonas. Design minimalista "Wireframe Premium" (Flat escuro elegante)
+    const defs = `<defs>
+        <filter id="soft-shadow"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.3"/></filter>
+    </defs>`;
+
+    const lensFilter = 'filter="url(#soft-shadow)"';
+    // Lente simples, minimalista e fotográfica
+    const drawLens = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#0a0a0a" stroke="#333" stroke-width="1.5"/>`;
+
+    // Desenho Geométrico Fiel - APPLE
+    if(dev.type === 'apple_pro') {
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="100" height="106" rx="24" fill="#18181b" ${lensFilter} stroke="#27272a" stroke-width="1"/>`;
+        cam += drawLens(BW+36, BW+36, 17);
+        cam += drawLens(BW+80, BW+36, 17);
+        cam += drawLens(BW+36, BW+82, 17);
+        cam += `<circle cx="${BW+80}" cy="${BW+80}" r="7" fill="#d4d4d8"/>`; // flash
+        cam += `<circle cx="${BW+80}" cy="${BW+60}" r="4" fill="#111"/>`; // lidar
+    } else if (dev.type === 'apple_diag_sq') {
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="82" height="82" rx="20" fill="#18181b" ${lensFilter} stroke="#27272a" stroke-width="1"/>`;
+        cam += drawLens(BW+31, BW+31, 16);
+        cam += drawLens(BW+67, BW+67, 16);
+        cam += `<circle cx="${BW+68}" cy="${BW+26}" r="6" fill="#d4d4d8"/>`; 
+    } else if (dev.type === 'apple_vert_sq') {
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="82" height="82" rx="20" fill="#18181b" ${lensFilter} stroke="#27272a" stroke-width="1"/>`;
+        cam += drawLens(BW+31, BW+31, 16);
+        cam += drawLens(BW+31, BW+67, 16);
+        cam += `<circle cx="${BW+68}" cy="${BW+48}" r="6" fill="#d4d4d8"/>`; 
+    } else if (dev.type === 'apple_16_pill') {
+        cam += `<rect x="${BW+12}" y="${BW+12}" width="52" height="100" rx="26" fill="#18181b" ${lensFilter} stroke="#27272a" stroke-width="1"/>`;
+        cam += drawLens(BW+38, BW+38, 15);
+        cam += drawLens(BW+38, BW+80, 15);
+        cam += `<circle cx="${BW+80}" cy="${BW+60}" r="6" fill="#d4d4d8"/>`; 
+    } else if (dev.type === 'apple_pill') {
+        cam += `<rect x="${BW+12}" y="${BW+12}" width="40" height="80" rx="20" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+32, BW+30, 12);
+        cam += drawLens(BW+32, BW+70, 12);
+        cam += `<circle cx="${BW+32}" cy="${BW+50}" r="4" fill="#d4d4d8"/>`;
+    } else if (dev.type === 'apple_single') {
+        cam += `<rect x="${BW+10}" y="${BW+10}" width="50" height="30" rx="15" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+25, BW+25, 11);
+        cam += `<circle cx="${BW+48}" cy="${BW+25}" r="4" fill="#d4d4d8"/>`;
+    
+    // Desenho Geométrico Fiel - SAMSUNG
+    } else if (dev.type === 's_ultra') {
+        const cx = BW + 28;
+        cam += drawLens(cx, BW+35, 16);
+        cam += drawLens(cx, BW+80, 16);
+        cam += drawLens(cx, BW+125, 16);
+        cam += drawLens(cx+32, BW+50, 9);
+        cam += `<circle cx="${cx+32}" cy="${BW+95}" r="6" fill="#d4d4d8"/>`;
+    } else if (dev.type === 's_float') {
+        const cx = BW + 28;
+        cam += drawLens(cx, BW+35, 15);
+        cam += drawLens(cx, BW+80, 15);
+        cam += drawLens(cx, BW+125, 15);
+        cam += `<circle cx="${cx+32}" cy="${BW+55}" r="5" fill="#d4d4d8"/>`;
+    } else if (dev.type === 's_block_quad') {
+        cam += `<rect x="${BW+10}" y="${BW+10}" width="65" height="120" rx="14" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+40, BW+35, 13);
+        cam += drawLens(BW+40, BW+70, 13);
+        cam += drawLens(BW+40, BW+105, 13);
+        cam += `<circle cx="${BW+63}" cy="${BW+50}" r="4.5" fill="#d4d4d8"/>`;
+        cam += drawLens(BW+63, BW+80, 7); 
+    } else if (dev.type === 's_block_vert') {
+        cam += `<rect x="${BW}" y="${BW}" width="50" height="130" rx="18" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+28, BW+35, 14);
+        cam += drawLens(BW+28, BW+75, 14);
+        cam += drawLens(BW+28, BW+115, 14);
+        cam += `<circle cx="${BW+65}" cy="${BW+40}" r="5" fill="#d4d4d8"/>`;
+
+    // Desenho Geométrico Fiel - OUTROS
+    } else if (dev.type === 'moto_std') {
+        cam += `<rect x="${BW+10}" y="${BW+10}" width="65" height="115" rx="16" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+42, BW+42, 17);
+        cam += drawLens(BW+42, BW+95, 17);
+        cam += `<circle cx="${BW+82}" cy="${BW+68}" r="5" fill="#d4d4d8"/>`;
+    } else if (dev.type === 'moto_sq') {
+        cam += `<rect x="${BW+10}" y="${BW+10}" width="75" height="75" rx="16" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+32, BW+32, 13);
+        cam += drawLens(BW+62, BW+32, 13);
+        cam += drawLens(BW+32, BW+62, 13);
+        cam += drawLens(BW+62, BW+62, 13);
+    } else if (dev.type === 'xiaomi_13c') {
+        // Redondo e flutuante
+        cam += drawLens(BW+36, BW+36, 17);
+        cam += drawLens(BW+36, BW+82, 17);
+        cam += `<circle cx="${BW+75}" cy="${BW+36}" r="5" fill="#d4d4d8"/>`; // flash na direita superior
+    } else if (dev.type === 'xiaomi_float_3') {
+        cam += drawLens(BW+36, BW+36, 17);
+        cam += drawLens(BW+36, BW+82, 17);
+        cam += drawLens(BW+75, BW+59, 10);
+        } else if (dev.type === 'xiaomi_float_note13') {
+        // Redmi Note 13 (Flutuante, Sem Bloco, 2 Lentes Grandes na Esquerda, 1 Pequena + 1 Flash na Direita)
+        cam += drawLens(BW+36, BW+36, 17); // Superior Esquerda (Main)
+        cam += drawLens(BW+36, BW+86, 17); // Inferior Esquerda (Ultrawide)
+        cam += drawLens(BW+78, BW+36, 9);  // Superior Direita (Macro)
+        cam += `<circle cx="${BW+78}" cy="${BW+72}" r="5" fill="#d4d4d8"/>`; // Flash (Inferior Direita)
+    } else if (dev.type === 'xiaomi_float_tri') {
+        cam += drawLens(BW+36, BW+36, 16);
+        cam += drawLens(BW+36, BW+80, 16);
+        cam += drawLens(BW+75, BW+58, 12);
+    } else if (dev.type === 'xiaomi_sq_3') {
+        // Bloco quadrado com 3 lentes
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="90" height="90" rx="14" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+35, BW+35, 15);
+        cam += drawLens(BW+35, BW+75, 15);
+        cam += drawLens(BW+75, BW+55, 10);
+    } else if (dev.type === 'xiaomi_sq_2') {
+        // Bloco quadrado com 2 lentes + flash
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="85" height="90" rx="14" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+35, BW+35, 15);
+        cam += drawLens(BW+35, BW+75, 15);
+        cam += `<circle cx="${BW+70}" cy="${BW+55}" r="6" fill="#d4d4d8"/>`;
+    } else if (dev.type === 'xiaomi_rect_2') {
+        // Bloco retangular com 2 lentes grandes (Note 12)
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="75" height="115" rx="12" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+45, BW+38, 16);
+        cam += drawLens(BW+45, BW+85, 16);
+        cam += `<circle cx="${BW+65}" cy="${BW+61}" r="4" fill="#d4d4d8"/>`;
+    } else if (dev.type === 'xiaomi_rect_3') {
+        // Bloco retangular com 3 lentes (Note 12 Pro)
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="75" height="120" rx="12" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+45, BW+35, 14);
+        cam += drawLens(BW+35, BW+85, 12);
+        cam += drawLens(BW+60, BW+85, 12);
+    } else if (dev.type === 'xiaomi_rect_4') {
+        // Bloco retangular com 4 matrizes (Note 11)
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="70" height="130" rx="12" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+43, BW+32, 14);
+        cam += drawLens(BW+31, BW+70, 8);
+        cam += drawLens(BW+55, BW+70, 8);
+        cam += drawLens(BW+43, BW+100, 10);
+    } else if (dev.type === 'xiaomi_poco') {
+        // Visor largo do Poco X6, etc
+        cam += `<rect x="${BW+4}" y="${BW+10}" width="${W-BW*2-8}" height="85" rx="8" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+35, BW+52, 18);
+        cam += drawLens(BW+85, BW+52, 18);
+        cam += `<circle cx="${BW+130}" cy="${BW+52}" r="8" fill="#d4d4d8"/>`;
+    } else if (dev.type === 'lg_sq') {
+        cam += `<rect x="${W/2 - 40}" y="${BW+15}" width="80" height="80" rx="14" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(W/2 - 18, BW+35, 11);
+        cam += drawLens(W/2 + 18, BW+35, 11);
+        cam += drawLens(W/2 - 18, BW+71, 11);
+        cam += drawLens(W/2 + 18, BW+71, 11);
+        cam += `<circle cx="${W/2}" cy="${BW+110}" r="5" fill="#d4d4d8"/>`;
+    } else if (dev.type === 'lg_hz') {
+        cam += `<rect x="${W/2 - 60}" y="${BW+20}" width="120" height="30" rx="15" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(W/2 - 42, BW+35, 9);
+        cam += drawLens(W/2 - 14, BW+35, 9);
+        cam += drawLens(W/2 + 14, BW+35, 9);
+        cam += drawLens(W/2 + 42, BW+35, 9);
+    } else {
+        // Fallback
+        cam += `<rect x="${BW+8}" y="${BW+8}" width="70" height="120" rx="20" fill="#18181b" ${lensFilter}/>`;
+        cam += drawLens(BW+40, BW+35, 13);
+        cam += drawLens(BW+40, BW+80, 13);
+    }
+
+    function rrp(x,y,w,h,r){return `M${x+r},${y}h${w-2*r}a${r},${r} 0 0 1 ${r},${r}v${h-2*r}a${r},${r} 0 0 1 -${r},${r}h-${w-2*r}a${r},${r} 0 0 1 -${r},-${r}v-${h-2*r}a${r},${r} 0 0 1 ${r},-${r}z `;}
+    function rrc(x,y,w,h,r){return `M${x+r},${y}a${r},${r} 0 0 0 -${r},${r}v${h-2*r}a${r},${r} 0 0 0 ${r},${r}h${w-2*r}a${r},${r} 0 0 0 ${r},-${r}v-${h-2*r}a${r},${r} 0 0 0 -${r},-${r}z `;}
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+        ${defs}
+        <!-- MÁSCARA DE CANTO: Limpa as sobras quadradas fora do arredondado do celular -->
+        <path fill="#09090b" d="M0,0 H${W} V${H} H0 Z ${rrp(0,0,W,H,CR)}" fill-rule="evenodd" />
+        
+        <!-- Bumper Flat (Minimalista) -->
+        <path fill-rule="evenodd" fill="#222" opacity="0.95" d="${rrp(0,0,W,H,CR)}${rrc(BW,BW,W-BW*2,H-BW*2,Math.max(8,CR-BW/2))}"/>
+        
+        <!-- Linha interna fina -->
+        <path fill="none" stroke="#000" stroke-width="1.5" opacity="0.3" d="${rrp(BW,BW,W-BW*2,H-BW*2,Math.max(8,CR-BW/2))}"/>
+        ${cam}
+    </svg>`;
+    return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+
+
+/* --- LOGICA DA APLICAÇÃO --- */
+const $ = id => document.getElementById(id);
+let fabricCanvas = null;
+let currentDevice = null;
+let activeImage = null; // A imagem da estampa inserida
+let baseScale = 1;
+
+// Init combos
+const brandCombo = $('brand-select');
+const modelCombo = $('model-select');
+
+Object.keys(DEVICES).forEach(b => {
+    let opt = document.createElement('option'); opt.value = b; opt.text = b; brandCombo.add(opt);
+});
+
+brandCombo.onchange = () => {
+    modelCombo.innerHTML = '';
+    const brand = brandCombo.value;
+    DEVICES[brand].forEach((d, i) => {
+        let opt = document.createElement('option'); opt.value = i; opt.text = d.n; modelCombo.add(opt);
+    });
+    modelCombo.onchange(); 
+};
+
+function setupSimulator(skipDeviceOverride = false) {
+    if(!skipDeviceOverride) {
+        const brand = brandCombo.value;
+        const idx = modelCombo.value;
+        if(brand && idx && DEVICES[brand][idx]) {
+            currentDevice = DEVICES[brand][idx];
+        }
+    }
+
+    if(fabricCanvas) fabricCanvas.dispose();
+    $('canvas-wrapper').innerHTML = '<canvas id="fabric-canvas"></canvas>';
+    
+    fabricCanvas = new fabric.Canvas('fabric-canvas', {
+        width: currentDevice.w, height: currentDevice.h, 
+        preserveObjectStacking: true, selection: false,
+        backgroundColor: 'transparent'
+    });
+
+    // Escala Responsiva Visual (Cross-device scaling inteligente)
+    const stageH = $('stage-area').clientHeight - 40;
+    const stageW = $('stage-area').clientWidth - 40;
+    
+    const scaleY = stageH / currentDevice.h;
+    const scaleX = stageW / currentDevice.w;
+    
+    // Pega a menor escala para garantir que caiba tanto na largura quanto na altura
+    let finalScale = Math.min(1, scaleY, scaleX);
+    
+    $('canvas-wrapper').style.transform = `scale(${finalScale})`;
+    $('canvas-wrapper').style.width = `${currentDevice.w}px`;
+    $('canvas-wrapper').style.height = `${currentDevice.h}px`;
+
+    // Aplica OVERLAY
+    let src = currentDevice.maskUrl || generatePerfectMask(currentDevice);
+    fabric.Image.fromURL(src, img => {
+        fabricCanvas.setOverlayImage(img, fabricCanvas.renderAll.bind(fabricCanvas), {
+            scaleX: currentDevice.w / img.width, 
+            scaleY: currentDevice.h / img.height,
+            crossOrigin: 'anonymous'
+        });
+    });
+
+    resetEditor();
+}
+
+modelCombo.onchange = () => setupSimulator(false);
+
+$('btn-apply-custom').onclick = () => {
+    const cw = parseFloat($('custom-w').value);
+    const ch = parseFloat($('custom-h').value);
+    if(!cw || !ch) { alert("Erro: Defina a largura e a altura do aparelho bruto em Milímetros (ex: 75 e 155)."); return; }
+    
+    // Pixel ratio de conversão aproximado do nosso layout base para renderização em milímetros
+    const PX_PER_MM = 4.15; 
+    currentDevice = {
+        n: `Personalizado (${cw} x ${ch} mm)`,
+        w: Math.round(cw * PX_PER_MM),
+        h: Math.round(ch * PX_PER_MM),
+        maskUrl: null,
+        type: 'fallback', 
+        cr: 22 
+    };
+    
+    setupSimulator(true);
+};
+brandCombo.onchange(); // Dispara o primeiro load
+
+// --- CONTROLES DA IMAGEM ---
+$('upload-input').onchange = (e) => {
+    const f = e.target.files[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+        fabric.Image.fromURL(evt.target.result, img => {
+            // Se já tem imagem, remove
+            if(activeImage) fabricCanvas.remove(activeImage);
+            
+            // Computa escala pra cobrir a capa
+            baseScale = Math.max(currentDevice.w / img.width, currentDevice.h / img.height);
+            
+            img.set({
+                left: currentDevice.w/2, top: currentDevice.h/2,
+                originX: 'center', originY: 'center',
+                scaleX: baseScale, scaleY: baseScale,
+                hasControls: false, hasBorders: false, // Sem quadrados azuis na foto. Controle apenas pelos sliders.
+                selectable: true // Permite arrastar com o mouse (Drag/Pan)
+            });
+            activeImage = img;
+            fabricCanvas.add(img); fabricCanvas.setActiveObject(img);
+            fabricCanvas.renderAll();
+            
+            // Ativa painel editor
+            $('editor-controls').classList.add('active');
+            
+            // Reseta sliders
+            $('zoom-slider').value = 1; $('v-zoom').innerText = "1.00x";
+            $('rot-slider').value = 0; $('v-rot').innerText = "0°";
+        });
+    };
+    reader.readAsDataURL(f);
+    e.target.value = '';
+};
+
+// Ao arrastar a imagem no canvas, não precisa atualizar sliders,
+// pois o arraste nativo não altera angulo/escala sem os controls do fabric.
+
+// Zoom via Slider
+$('zoom-slider').oninput = e => {
+    if(!activeImage) return;
+    let factor = parseFloat(e.target.value);
+    activeImage.set({ scaleX: baseScale * factor, scaleY: baseScale * factor });
+    $('v-zoom').innerText = factor.toFixed(2) + "x";
+    fabricCanvas.renderAll();
+};
+
+// Rotação via Slider
+$('rot-slider').oninput = e => {
+    if(!activeImage) return;
+    let ang = parseInt(e.target.value);
+    activeImage.set({ angle: ang });
+    $('v-rot').innerText = ang + "°";
+    fabricCanvas.renderAll();
+};
+
+$('btn-center').onclick = () => {
+    if(!activeImage) return;
+    activeImage.set({ left: currentDevice.w/2, top: currentDevice.h/2, angle: 0 });
+    $('rot-slider').value = 0; $('v-rot').innerText = "0°";
+    fabricCanvas.renderAll();
+};
+
+function resetEditor() {
+    activeImage = null;
+    $('editor-controls').classList.remove('active');
+}
+
+$('btn-delete').onclick = () => {
+    if(activeImage) {
+        fabricCanvas.remove(activeImage);
+        fabricCanvas.renderAll();
+        resetEditor();
+    }
+};
+
+// --- EXPORTAÇÃO PARA MÁQUINA (SEM MÁSCARA) ---
+$('btn-export').onclick = () => {
+    if(!fabricCanvas || fabricCanvas.getObjects().length === 0) {
+        alert("Carregue uma imagem na capinha primeiro!"); return;
+    }
+    
+    // O pulo do gato: removemos o OVERLAY antes de bater a foto do canvas
+    const tempOverlay = fabricCanvas.overlayImage;
+    fabricCanvas.setOverlayImage(null, () => {
+        fabricCanvas.renderAll();
+        
+        // Geração do arquivo Cru para a máquina (multiplicador para 300DPI)
+        const finalDataUrl = fabricCanvas.toDataURL({ format: 'jpeg', quality: 1, multiplier: 3 });
+        
+        // Devolve o overlay pro user não notar
+        fabricCanvas.setOverlayImage(tempOverlay, () => { fabricCanvas.renderAll(); });
+        
+        // Mostra o modal de output
+        $('result-img').src = finalDataUrl;
+        $('modal').classList.add('active');
+        
+        // Botão de Download na Modal
+        $('btn-download').onclick = () => {
+            const a = document.createElement('a');
+            a.href = finalDataUrl;
+            a.download = `ARTE_CAPINHA_${currentDevice.n.replace(/ /g,'_')}.jpg`;
+            a.click();
+        };
+    });
+};
+
+$('btn-close-modal').onclick = () => $('modal').classList.remove('active');
+
+</script>
+</body>
+</html>

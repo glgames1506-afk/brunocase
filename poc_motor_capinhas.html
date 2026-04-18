@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motor de Customização - POC</title>
+    <!-- Tailwind para estilização rápida -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fabric.js para o motor do Canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        body { background-color: #f3f4f6; }
+        .canvas-container {
+            margin: 0 auto;
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            background-color: white;
+            /* Simula a proporção do celular */
+            width: 300px;
+            height: 600px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center py-10 font-sans">
+
+    <h1 class="text-2xl font-bold mb-2">Motor de Capinhas v1.0</h1>
+    <p class="text-gray-500 mb-6 text-center max-w-md">Selecione uma foto. Use o mouse ou o dedo para mover, girar e dar zoom. A máscara preta simula o corte da capinha e as câmeras.</p>
+
+    <!-- Controles -->
+    <div class="mb-6 flex gap-4">
+        <label class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded cursor-pointer transition">
+            1. Subir Foto (Galeria)
+            <input type="file" id="upload-image" accept="image/*" class="hidden">
+        </label>
+        <button id="btn-exportar" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
+            2. Gerar Arquivo Final
+        </button>
+    </div>
+
+    <!-- O Canvas onde a mágica acontece -->
+    <canvas id="tshirt-canvas" width="300" height="600"></canvas>
+
+    <div id="result-container" class="mt-8 hidden flex flex-col items-center">
+        <h2 class="text-xl font-bold mb-2 text-green-600">Pronto para a Fábrica!</h2>
+        <p class="text-sm text-gray-500 mb-2">Este é o arquivo limpo e sem a máscara, pronto para impressão na máquina UV/Sublimação.</p>
+        <img id="final-image" class="border-2 border-gray-300 shadow-md max-w-full rounded" />
+    </div>
+
+    <script>
+        // Inicializa o Fabric.js
+        const canvas = new fabric.Canvas('tshirt-canvas', {
+            preserveObjectStacking: true, // Mantém a máscara sempre no topo
+            selection: false
+        });
+
+        // ----------------------------------------------------
+        // O SEGREDO DO GOCASE: A MÁSCARA OVERLAY
+        // Aqui usamos um SVG base64 gerado inline simulando 
+        // as bordas pretas do celular e os buracos da câmera.
+        // Na vida real, seria um PNG transparente de um iPhone.
+        // ----------------------------------------------------
+        const svgOverlay = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="600"><path fill="%231f2937" d="M0 0h300v600H0V0zm15 30a15 15 0 0 1 15-15h240a15 15 0 0 1 15 15v540a15 15 0 0 1-15 15H30a15 15 0 0 1-15-15V30zM40 40h60v60H40V40z"/></svg>`;
+        
+        fabric.Image.fromURL(svgOverlay, function(img) {
+            // Define a máscara como OVERLAY (intocável pelo usuário, sempre em cima)
+            canvas.setOverlayImage(img, canvas.renderAll.bind(canvas));
+        });
+
+        // ----------------------------------------------------
+        // EVENTO: CLIENTE FEZ UPLOAD DA FOTO
+        // ----------------------------------------------------
+        document.getElementById('upload-image').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(f) {
+                const data = f.target.result;
+                fabric.Image.fromURL(data, function(img) {
+                    
+                    // Ajusta a escala inicial para caber no celular
+                    const scale = Math.max(300 / img.width, 600 / img.height);
+                    img.set({
+                        left: 150, // Centraliza
+                        top: 300,
+                        originX: 'center',
+                        originY: 'center',
+                        scaleX: scale,
+                        scaleY: scale,
+                        cornerColor: 'rgba(59, 130, 246, 0.8)',
+                        cornerStyle: 'circle',
+                        transparentCorners: false,
+                        borderColor: 'blue',
+                        hasControls: true
+                    });
+                    
+                    // Limpa telas antigas e adiciona nova foto
+                    canvas.clear(); 
+                    canvas.add(img);
+                    canvas.setActiveObject(img);
+                    canvas.renderAll();
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // ----------------------------------------------------
+        // EVENTO: CLICOU EM GERAR (EXPORTAR PARA FÁBRICA)
+        // ----------------------------------------------------
+        document.getElementById('btn-exportar').addEventListener('click', function() {
+            // Se o cliente não subiu foto, avisa
+            if (canvas.getObjects().length === 0) {
+                alert("Suba uma foto primeiro!");
+                return;
+            }
+
+            // O TRUQUE: Removemos a máscara para exportar o arquivo LIMPO para impressão
+            const tempOverlay = canvas.overlayImage;
+            canvas.setOverlayImage(null, function() {
+                canvas.renderAll();
+                
+                // Exporta em Alta Qualidade (Aumenta o multiplicador para print-ready > 300 DPI)
+                const dataURL = canvas.toDataURL({
+                    format: 'jpeg',
+                    quality: 1,
+                    multiplier: 2 // Exporta a imagem com o dobro do tamanho da tela (para não sangrar)
+                });
+
+                // Devolve a máscara pra tela do usuário não piscar (ilusão)
+                canvas.setOverlayImage(tempOverlay, canvas.renderAll.bind(canvas));
+
+                // Exibe o resultado final de produção na tela
+                const resultContainer = document.getElementById('result-container');
+                const finalImage = document.getElementById('final-image');
+                finalImage.src = dataURL;
+                resultContainer.classList.remove('hidden');
+                
+                // Em um servidor real: 
+                // Aqui rodaria um fetch POST enviando o 'dataURL' ou 'JSON' para o n8n ou Banco de Dados da gráfica
+            });
+        });
+    </script>
+</body>
+</html>
